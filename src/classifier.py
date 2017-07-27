@@ -1,9 +1,8 @@
 from sklearn import cross_validation
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import mean_absolute_error as mae
-from sklearn.metrics import mean_squared_error as mse
 from sklearn.preprocessing import normalize
 from sklearn.metrics import confusion_matrix
+from sklearn.feature_extraction.text import CountVectorizer
 import itertools
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
@@ -11,6 +10,9 @@ import seaborn
 from scipy import sparse
 import numpy as np
 import pandas as pd
+import util
+from phrasemachine import phrasemachine
+from collections import Counter
 
 
 def concat_features():
@@ -24,7 +26,7 @@ def concat_features():
         lexical_feats = pd.read_csv(util.lexical_features_file % ng, sep=',', encoding='utf8')
         labels.append(lexical_feats.shape[0])
 
-        if all_lexical_feats:
+        if all_lexical_feats is not None:
             all_lexical_feats = pd.concat([all_lexical_feats, lexical_feats], axis=0)
         else:
             all_lexical_feats = lexical_feats
@@ -42,36 +44,42 @@ def concat_features():
 
 # returns the named entities and ngrams (vectorized) into a dataframe
 def get_vectorizations_for_all_classes():
-    print("Generating named entities and ngrams for all data")
 
     # concatenate all headlines into a 1D array so you can extract all ngrams/NEs from them
     all_headlines = None
+    all_link_data = pd.read_csv(util.datafile % util.newsgroups[0], sep=',', encoding='utf8')
+    all_headlines = all_link_data['link_name'].head(n=100)
+    
 
-    for ng in util.newsgroups:
-        all_link_data = pd.read_csv(util.datafile % ng, sep=',', encoding='utf8')
+    # for ng in util.newsgroups:
+        # all_link_data = pd.read_csv(util.datafile % ng, sep=',', encoding='utf8')
         
-        if all_headlines:
-            all_headlines = pd.concat([all_headlines, all_link_data['link_name']], axis=0)
-        else:
-            all_headlines = all_link_data['link_name']
+        # if all_headlines is not None:
+            # all_headlines = pd.concat([all_headlines, all_link_data['link_name']], axis=0)
+        # else:
+            # all_headlines = all_link_data['link_name']
 
 
     # get named entities with phrasemachine
-    phrases = all_headlines.map(phrasemachine.get_phrases).most_common(top_nes)
-    vectorizer = CountVectorizer(vocabulary=all_headlines_phrases)
-    ner = vectorizer.fit_transform(all_headlines)
-    ner_feature_names = ner.get_feature_names()
+    print("Generating named entities for all data")
+    
+    all_headlines_phrases = sum((phrasemachine.get_phrases(h)['counts'] for h in all_headlines), \
+            Counter()).most_common(top_nes)
+    vectorizer = CountVectorizer(vocabulary=[k[0] for k in all_headlines_phrases])
+    sd = vectorizer.fit_transform(all_headlines)
+    print(all_headlines, all_headlines_phrases)
+    print(sd)
+    ner = pd.SparseDataFrame(sd, \
+            vectorizer.get_feature_names())
 
     # ngrams
-    vectorizer = CountVectorizer(ngram_range=(min_n, max_n), analyzer=analyzer, max_features=top_ngrams)
-    ngrams = vectorizer.fit_transform(all_headlines)
-    ngrams_feature_names = ngrams.get_feature_names()
-
-    X = sparse.hstack((ner, ngrams))
-    ner_feature_names.extend(ngrams_feature_names)
-
-    return pd.DataFrame(data=X, columns=ner_feature_names)
+    print("Generating ngrams for all data")
     
+    vectorizer = CountVectorizer(ngram_range=(min_n, max_n), analyzer=analyzer, max_features=top_ngrams)
+    ngrams = pd.SparseDataFrame(vectorizer.fit_transform(all_headlines), \
+            vectorizer.get_feature_names())
+
+    return pd.concat([ner, ngrams], axis=1)    
 
 
 def train(X, y):
@@ -81,8 +89,8 @@ def train(X, y):
     model.fit(X_train, y_train)
     y_pred = model.predict(X_test)
 
-    print "Training error: %.6f" % accuracy_score(model.predict(X_train), y_train)
-    print "Test error: %.6f" % accuracy_score(y_pred, y_test)
+    print("Training error: %.6f" % accuracy_score(model.predict(X_train), y_train))
+    print("Test error: %.6f" % accuracy_score(y_pred, y_test))
     
     confusion_matrices_pdf.close()
     print_best_features(model.feature_importances_, X.columns)
@@ -94,13 +102,13 @@ def print_best_features(coef, feature_names):
     zipped = zip(coef, feature_names)				
     zipped.sort(key = lambda t: t[0], reverse=True)
 
-    print "\nMOST POSITIVE FEATURES:"
+    print("\nMOST POSITIVE FEATURES:")
     for (weight, word) in zipped[:40]:
-        print "{}\t{:.6f}".format(word, weight)
+        print("{}\t{:.6f}".format(word, weight))
 
-    print "\nMOST NEGATIVE FEATURES:"
+    print("\nMOST NEGATIVE FEATURES:")
     for (weight, word) in zipped[:-40:-1]:
-        print "{}\t{:.6f}".format(word, weight)
+        print("{}\t{:.6f}".format(word, weight))
 
 
 def accuracy_score(y_pred, y_true):
@@ -148,8 +156,8 @@ if __name__ == "__main__":
     min_n = 1
     max_n = 2
     analyzer = 'word'
-    top_ngrams = 20000      # only use top 20000 unigrams and bigrams
-    top_nes = 1000       # only use top 1000 named entities
+    top_ngrams = 20      # only use top 20000 unigrams and bigrams
+    top_nes = 5       # only use top 1000 named entities
     n_trees = 10
     model = RandomForestClassifier(n_estimators=n_trees)
 
