@@ -13,28 +13,36 @@ import os
 import csv
 import util
 import json
+import subprocess, shlex
 
 
 
 def generate_lexical_features():    
-    print("Generating lexical features")
-    # lexical_feats = [lexical_richness, lexical_density, avg_word_length, \
-                    # textstat.flesch_reading_ease, length_of_line, \
-                    # compound_sentiment, positive_sentiment, negative_sentiment, \
-                    # num_hyperbolic_words]
-    lexical_feats = [clickbait_words_count, starts_with_number, starts_with_adverb, \
+    lexical_feats = [lexical_richness, lexical_density, avg_word_length, \
+                    textstat.flesch_reading_ease, length_of_line, \
+                    compound_sentiment, positive_sentiment, negative_sentiment, \
+                    num_hyperbolic_words, avg_sentence_length]
+    lexical_feats.extend([clickbait_words_count, starts_with_number, starts_with_adverb, \
                     count_adverbs, count_adjectives, count_superlatives, count_uppercase, \
                     count_verbs, count_nouns, count_pronouns, count_prepositions, \
                     count_interjections, formality_measure, positive_sentiment_words, \
-                    negative_sentiment_words] 
+                    negative_sentiment_words])
 
-    #lexical_feats.extend([avg_sentence_length])
+    print("Generating %s lexical features for each newsgroup" % len(lexical_feats))
+
+    # s = subprocess.Popen(shlex.split('cd /Users/vijithasridhar/Downloads/stanford-corenlp' + \
+            # '-full-2017-06-09 &&' + \
+            # " java -mx4g -cp '*' edu.stanford.nlp.pipeline." + \
+            # 'StanfordCoreNLPServer -port 9000 -timeout 15000 &'))
+
+    # print (s.pid)
+    
 
     for ng in util.newsgroups:
         print("Analyzing", ng)
 
-        #with open(util.lexical_features_file % ng, 'w', newline='') as f:
-        with open(util.home_dir + '/features/%s_more_lexical_features.csv' % ng, 'w', newline='') as f:
+        with open(util.lexical_features_file % ng, 'w', newline='') as f:
+        #with open(util.home_dir + '/features/%s_more_lexical_features.csv' % ng, 'w', newline='') as f:
             w = csv.writer(f)
             w.writerow(['status_id'] + [x.__name__ for x in lexical_feats])
 
@@ -57,7 +65,47 @@ def generate_lexical_features():
 
                 w.writerow([link_data['status_id']] + [str(f(headline)) for f in lexical_feats])
     
+    # os.kill(s.pid)
     return
+
+
+# the feat_names is actually a list of functions, which is what you'll pass in
+def add_feature(feat_names):
+    for ng in util.newsgroups:
+        print("Adding feature %s to %s" % (feat_name, ng))
+
+        all_link_data = pd.read_csv(util.datafile % ng, sep=',', encoding='utf8', names=util.header_names)
+        existing_data = pd.read_csv(util.lexical_features_file % ng, sep=',', encoding='utf8')
+
+        for feat_name in feat_names:
+            new_data = []
+            for i, link_data in all_link_data.iterrows():
+                    headline = link_data['link_name']
+                    
+                    if i == 0 or pd.isnull(headline):
+                        # iterrows for some reason includes the names line; link sometimes somehow
+                        # doesn't have an associated name
+                        continue
+                    if i % 1000 == 0:
+                        print("...%s links complete" % i)
+
+                    global pos_headline, pos_counts
+                    pos_headline = nltk.pos_tag(nltk.word_tokenize(headline))
+                    pos_counts = compute_pos_counts()
+
+                    new_data.append(str(feat_name(headline))
+
+            existing_data[feat_name.__name__] = new_data
+            
+        existing_data.to_csv(util.datafile % ng + '1')
+
+
+
+def count_dem_party_references(h):
+    return sum(1 for w in h if w.lower() in democratic_party_names)
+
+def count_repub_party_references(h):
+    return sum(1 for w in h if w.lower() in republican_party_names)
 
 
 
@@ -157,7 +205,7 @@ def count_superlatives(h):
     return sum(1 for x in pos_headline if x[1] == 'JJS' or x[1] == 'RBS')
 
 def count_uppercase(h):
-    return sum(1 for x in h.split() if h.isupper())
+    return sum(1 for x in h.split() if x.isupper())
 
 def positive_sentiment_words(h):
     return sum(sia.polarity_scores(w)['pos'] for w in h.split())
@@ -212,5 +260,8 @@ if __name__ == "__main__":
     # store some necessary global variables
     pos_headline = None
     pos_counts = None
+
+    democratic_party_names = ['libs', 'liberals', 'dems', 'democrats', 'left']
+    republican_party_names = ['reps', 'repubs', 'republicans', 'right']
 
     generate_lexical_features()
