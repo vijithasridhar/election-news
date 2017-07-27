@@ -4,13 +4,16 @@ from sklearn.metrics import mean_absolute_error as mae
 from sklearn.metrics import mean_squared_error as mse
 from sklearn.preprocessing import normalize
 from sklearn.metrics import confusion_matrix
+from sklearn.feature_extraction.text import CountVectorizer
 import itertools
+import util
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 import seaborn
-from scipy import sparse
 import numpy as np
 import pandas as pd
+from phrasemachine import phrasemachine
+from collections import Counter
 
 
 def concat_features():
@@ -20,11 +23,12 @@ def concat_features():
     all_lexical_feats = None
     labels = []
 
-    for ng in util.newsgroups:
-        lexical_feats = pd.read_csv(util.lexical_features_file % ng, sep=',', encoding='utf8')
+    for i, ng in enumerate(util.newsgroups):
+        lexical_feats = pd.read_csv(util.lexical_features_file % ng, sep=',', encoding='utf8') \
+                        .sample(n=(num_datapoints_for_model // len(util.newsgroups)), random_state=i)
         labels.append(lexical_feats.shape[0])
 
-        if all_lexical_feats:
+        if all_lexical_feats is not None:
             all_lexical_feats = pd.concat([all_lexical_feats, lexical_feats], axis=0)
         else:
             all_lexical_feats = lexical_feats
@@ -42,35 +46,37 @@ def concat_features():
 
 # returns the named entities and ngrams (vectorized) into a dataframe
 def get_vectorizations_for_all_classes():
-    print("Generating named entities and ngrams for all data")
 
     # concatenate all headlines into a 1D array so you can extract all ngrams/NEs from them
     all_headlines = None
+    
+    for i, ng in enumerate(util.newsgroups):
 
-    for ng in util.newsgroups:
-        all_link_data = pd.read_csv(util.datafile % ng, sep=',', encoding='utf8')
+        # sample datapoints from all the headlines, since you have way too many headlines to use in a model
+        all_link_data = pd.read_csv(util.datafile % ng, sep=',', encoding='utf8') \
+                        .sample(n=(num_datapoints_for_model // len(util.newsgroups)), random_state=i)
         
-        if all_headlines:
+        if all_headlines is not None:
             all_headlines = pd.concat([all_headlines, all_link_data['link_name']], axis=0)
         else:
             all_headlines = all_link_data['link_name']
 
 
     # get named entities with phrasemachine
-    phrases = all_headlines.map(phrasemachine.get_phrases).most_common(top_nes)
-    vectorizer = CountVectorizer(vocabulary=all_headlines_phrases)
+    print("Generating named entities for all data")
+    phrases = sum((phrasemachine.get_phrases(h)['counts'] for h in all_headlines), \
+			Counter()).most_common(top_nes)
+    vectorizer = CountVectorizer(vocabulary=[k[0] for k in all_headlines_phrases])
     ner = vectorizer.fit_transform(all_headlines)
-    ner_feature_names = ner.get_feature_names()
+    ner = pd.DataFrame(data=ner, columns=vectorizer.get_feature_names())
 
     # ngrams
+    print("Generating ngrams for all data")
     vectorizer = CountVectorizer(ngram_range=(min_n, max_n), analyzer=analyzer, max_features=top_ngrams)
     ngrams = vectorizer.fit_transform(all_headlines)
-    ngrams_feature_names = ngrams.get_feature_names()
+    ngrams = pd.DataFrame(data=ngrams, columns=vectorizer.get_feature_names())
 
-    X = sparse.hstack((ner, ngrams))
-    ner_feature_names.extend(ngrams_feature_names)
-
-    return pd.DataFrame(data=X, columns=ner_feature_names)
+    return pd.concat([ner, ngrams], axis=1)
     
 
 
@@ -148,8 +154,11 @@ if __name__ == "__main__":
     min_n = 1
     max_n = 2
     analyzer = 'word'
-    top_ngrams = 20000      # only use top 20000 unigrams and bigrams
-    top_nes = 1000       # only use top 1000 named entities
+    top_ngrams = 200      # only use top 20000 unigrams and bigrams
+    top_nes = 10     # only use top 1000 named entities
+
+    # TODO model hyperparams
+    num_datapoints_for_model = 10000
     n_trees = 10
     model = RandomForestClassifier(n_estimators=n_trees)
 
