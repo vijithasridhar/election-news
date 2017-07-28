@@ -2,7 +2,9 @@ from sklearn import cross_validation
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import normalize
 from sklearn.metrics import confusion_matrix
+from sklearn.metrics import accuracy_score as sklearn_accuracy_score
 from sklearn.feature_extraction.text import CountVectorizer
+from scipy import sparse
 import itertools
 import util
 import matplotlib.pyplot as plt
@@ -14,39 +16,65 @@ from phrasemachine import phrasemachine
 from collections import Counter
 
 
+# for some reason random_state wasn't working properly when I called sample(),
+# so I chose to use the same index as in get_vectorizations to sample instead
+def sample_by_index(df, index, i, num_one_newsgroup):
+    index = list(index)
+    indices_for_this_ng = index[i * num_one_newsgroup : (i+1) * num_one_newsgroup]
+    return df.ix[indices_for_this_ng]
+
+
 def concat_features():
     other_features = get_vectorizations_for_all_classes()
 
-    print("Combining all data for %s" % ng)
+    print("Combining all features into data and labels")
     all_lexical_feats = None
     labels = []
 
     for i, ng in enumerate(util.newsgroups):
-        lexical_feats = pd.read_csv(util.lexical_features_file % ng, sep=',', encoding='utf8') \
-                        .sample(n=(num_datapoints_for_model // len(util.newsgroups)), random_state=i)
+        lexical_feats = pd.read_csv(util.lexical_features_file % ng, sep=',', encoding='utf8') 
+        lexical_feats = sample_by_index(lexical_feats, other_features.index, i, \
+                (num_datapoints_for_model // len(util.newsgroups)))
         labels.append(lexical_feats.shape[0])
 
         if all_lexical_feats is not None:
             all_lexical_feats = pd.concat([all_lexical_feats, lexical_feats], axis=0)
         else:
             all_lexical_feats = lexical_feats
-
-    X = pd.concat([all_lexical_feats, other_features], axis=1)
+    
+    assert all_lexical_feats.index.equals(other_features.index), "Error: sampling different datapoints " \
+            + "from the feature matrices!"
 
     # delete the first column because they're all the status IDs, but save that
-    status_ids_order = X[util.primary_key]    
-    X.drop(util.primary_key, axis=1, inplace=True)
+    status_ids_order = all_lexical_feats[util.primary_key]    
+    all_lexical_feats.drop(util.primary_key, axis=1, inplace=True)
+    other_features = other_features.fillna(0)
 
+    X = pd.concat((all_lexical_feats, other_features), axis=1)
+    print(X)
     # kept track of just how many datapoints for each newsgroup there was
     y = np.repeat(range(1, len(util.newsgroups) + 1), labels)
-    X.to_csv('X.csv')
-    y.to_csv('y.csv')
+    print(y)
+    np.savetxt('X.csv', X.values, delimiter=',')
+    np.savetxt('y.csv', y, delimiter=',')
     status_ids_order.to_csv('status_ids_order.csv')
     return X, y
 
 
-def tokenize(h):
-    return [h]
+def vectorize(vocabulary, list_of_strings):
+    mat = None
+    for i, string in enumerate(list_of_strings):
+        vector = []
+        for phrase in vocabulary:
+            vector.append(1 if phrase in string else 0)
+        vector = sparse.csr_matrix(vector)
+        if mat is not None:
+            mat = sparse.vstack((mat, vector))
+        else:
+            mat = vector
+
+    return mat
+
 
 # returns the named entities and ngrams (vectorized) into a dataframe
 def get_vectorizations_for_all_classes():
@@ -58,13 +86,9 @@ def get_vectorizations_for_all_classes():
 
         # sample datapoints from all the headlines, since you have way too many headlines to use in a model
         # lowercase to do NER without worrying about case (CountVectorizer doesn't work otws)
-        all_link_data = pd.read_csv(util.datafile % ng, sep=',', encoding='utf8') \
-                        .sample(n=(num_datapoints_for_model // len(util.newsgroups)), random_state=i)
-        print(all_link_data)
-        all_link_data.dropna(subset=['link_name'], inplace=True)
-        all_link_data.apply(lambda x: pd.lib.infer_dtype(x.values))
-        all_link_data = all_link_data['link_name'].str.lower().str.decode('utf8')
-        
+        all_link_data = pd.read_csv(util.datafile % ng, sep=',', encoding='UTF-8') \
+                        .sample(n=(num_datapoints_for_model // len(util.newsgroups)), random_state=i) \
+                        ['link_name'].str.lower()
         if all_headlines is not None:
             all_headlines = pd.concat([all_headlines, all_link_data], axis=0)
         else:
@@ -74,20 +98,18 @@ def get_vectorizations_for_all_classes():
     # get named entities with phrasemachine
     print("Generating named entities for all data")
     phrases = sum((phrasemachine.get_phrases(h)['counts'] for h in all_headlines), \
-			Counter()).most_common(top_nes)
-    vectorizer = CountVectorizer(vocabulary=[k[0] for k in phrases])
-    ner = vectorizer.fit_transform(all_headlines)
-    print([k[0] for k in phrases])
-    print(all_headlines)
-    print(ner, type(ner))
-    print(vectorizer.get_feature_names())
-    ner = pd.DataFrame(data=ner, columns=vectorizer.get_feature_names())
+                        Counter()).most_common(top_nes)
+    phrases = [str(k[0]) for k in phrases]
+    ner = vectorize(phrases, all_headlines)
+    # needs pandas 0.20.0+
+    ner = pd.SparseDataFrame(data=ner, columns=phrases, index=all_headlines.index)
 
     # ngrams
     print("Generating ngrams for all data")
     vectorizer = CountVectorizer(ngram_range=(min_n, max_n), analyzer=analyzer, max_features=top_ngrams)
     ngrams = vectorizer.fit_transform(all_headlines)
-    ngrams = pd.DataFrame(data=ngrams, columns=vectorizer.get_feature_names())
+    ngrams = pd.SparseDataFrame(data=ngrams, columns=vectorizer.get_feature_names(), \
+            index=all_headlines.index)
 
     return pd.concat([ner, ngrams], axis=1)
     
@@ -95,7 +117,7 @@ def get_vectorizations_for_all_classes():
 
 def train(X, y):
     X_train, X_test, y_train, y_test = cross_validation.train_test_split(   \
-                    X, Y, test_size=0.2, random_state=0)
+                    X, y, test_size=0.2, random_state=0)
 
     model.fit(X_train, y_train)
     y_pred = model.predict(X_test)
@@ -130,7 +152,7 @@ def accuracy_score(y_pred, y_true):
     plot_confusion_matrix(cnf_matrix, classes=util.newsgroups)
     confusion_matrices_pdf.savefig(plt.gcf())
     
-    #return mae(y_true, y_pred)
+    return sklearn_accuracy_score(y_true, y_pred)
 
 
 # taken from sklearn documentation
@@ -144,11 +166,6 @@ def plot_confusion_matrix(cm, classes, normalize=True, title='Confusion matrix',
 
     if normalize:
         cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
-        print("Normalized confusion matrix")
-    else:
-        print('Confusion matrix, without normalization')
-
-    print(cm)
 
     thresh = cm.max() / 2.
     for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
@@ -168,10 +185,10 @@ if __name__ == "__main__":
     max_n = 2
     analyzer = 'word'
     top_ngrams = 200      # only use top 20000 unigrams and bigrams
-    top_nes = 10     # only use top 1000 named entities
+    top_nes = 100     # only use top 1000 named entities
 
     # TODO model hyperparams
-    num_datapoints_for_model = 10
+    num_datapoints_for_model = 100
     n_trees = 10
     model = RandomForestClassifier(n_estimators=n_trees)
 
@@ -183,6 +200,5 @@ if __name__ == "__main__":
     status_ids_order = None
 
     X, y = concat_features()
-    y_pred = train(X, y)
-    print(accuracy_score(y_pred))
+    train(X, y)
 
