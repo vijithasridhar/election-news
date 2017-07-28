@@ -41,8 +41,14 @@ def concat_features():
 
     # kept track of just how many datapoints for each newsgroup there was
     y = np.repeat(range(1, len(util.newsgroups) + 1), labels)
+    X.to_csv('X.csv')
+    y.to_csv('y.csv')
+    status_ids_order.to_csv('status_ids_order.csv')
     return X, y
 
+
+def tokenize(h):
+    return [h]
 
 # returns the named entities and ngrams (vectorized) into a dataframe
 def get_vectorizations_for_all_classes():
@@ -53,21 +59,30 @@ def get_vectorizations_for_all_classes():
     for i, ng in enumerate(util.newsgroups):
 
         # sample datapoints from all the headlines, since you have way too many headlines to use in a model
+        # lowercase to do NER without worrying about case (CountVectorizer doesn't work otws)
         all_link_data = pd.read_csv(util.datafile % ng, sep=',', encoding='utf8') \
                         .sample(n=(num_datapoints_for_model // len(util.newsgroups)), random_state=i)
+        print(all_link_data)
+        all_link_data.dropna(subset=['link_name'], inplace=True)
+        all_link_data.apply(lambda x: pd.lib.infer_dtype(x.values))
+        all_link_data = all_link_data['link_name'].str.lower().str.decode('utf8')
         
         if all_headlines is not None:
-            all_headlines = pd.concat([all_headlines, all_link_data['link_name']], axis=0)
+            all_headlines = pd.concat([all_headlines, all_link_data], axis=0)
         else:
-            all_headlines = all_link_data['link_name']
+            all_headlines = all_link_data
 
 
     # get named entities with phrasemachine
     print("Generating named entities for all data")
     phrases = sum((phrasemachine.get_phrases(h)['counts'] for h in all_headlines), \
 			Counter()).most_common(top_nes)
-    vectorizer = CountVectorizer(vocabulary=[k[0] for k in all_headlines_phrases])
+    vectorizer = CountVectorizer(vocabulary=[k[0] for k in phrases])
     ner = vectorizer.fit_transform(all_headlines)
+    print([k[0] for k in phrases])
+    print(all_headlines)
+    print(ner, type(ner))
+    print(vectorizer.get_feature_names())
     ner = pd.DataFrame(data=ner, columns=vectorizer.get_feature_names())
 
     # ngrams
@@ -158,7 +173,7 @@ if __name__ == "__main__":
     top_nes = 10     # only use top 1000 named entities
 
     # TODO model hyperparams
-    num_datapoints_for_model = 10000
+    num_datapoints_for_model = 10
     n_trees = 10
     model = RandomForestClassifier(n_estimators=n_trees)
 
