@@ -4,13 +4,12 @@ from sklearn.preprocessing import normalize
 from sklearn.metrics import confusion_matrix
 from sklearn.feature_extraction.text import CountVectorizer
 import itertools
+import util
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 import seaborn
-from scipy import sparse
 import numpy as np
 import pandas as pd
-import util
 from phrasemachine import phrasemachine
 from collections import Counter
 
@@ -22,8 +21,9 @@ def concat_features():
     all_lexical_feats = None
     labels = []
 
-    for ng in util.newsgroups:
-        lexical_feats = pd.read_csv(util.lexical_features_file % ng, sep=',', encoding='utf8')
+    for i, ng in enumerate(util.newsgroups):
+        lexical_feats = pd.read_csv(util.lexical_features_file % ng, sep=',', encoding='utf8') \
+                        .sample(n=(num_datapoints_for_model // len(util.newsgroups)), random_state=i)
         labels.append(lexical_feats.shape[0])
 
         if all_lexical_feats is not None:
@@ -39,47 +39,58 @@ def concat_features():
 
     # kept track of just how many datapoints for each newsgroup there was
     y = np.repeat(range(1, len(util.newsgroups) + 1), labels)
+    X.to_csv('X.csv')
+    y.to_csv('y.csv')
+    status_ids_order.to_csv('status_ids_order.csv')
     return X, y
 
+
+def tokenize(h):
+    return [h]
 
 # returns the named entities and ngrams (vectorized) into a dataframe
 def get_vectorizations_for_all_classes():
 
     # concatenate all headlines into a 1D array so you can extract all ngrams/NEs from them
     all_headlines = None
-    all_link_data = pd.read_csv(util.datafile % util.newsgroups[0], sep=',', encoding='utf8')
-    all_headlines = all_link_data['link_name'].head(n=100)
-    
 
-    # for ng in util.newsgroups:
-        # all_link_data = pd.read_csv(util.datafile % ng, sep=',', encoding='utf8')
+    for i, ng in enumerate(util.newsgroups):
+
+        # sample datapoints from all the headlines, since you have way too many headlines to use in a model
+        # lowercase to do NER without worrying about case (CountVectorizer doesn't work otws)
+        all_link_data = pd.read_csv(util.datafile % ng, sep=',', encoding='utf8') \
+                        .sample(n=(num_datapoints_for_model // len(util.newsgroups)), random_state=i)
+        print(all_link_data)
+        all_link_data.dropna(subset=['link_name'], inplace=True)
+        all_link_data.apply(lambda x: pd.lib.infer_dtype(x.values))
+        all_link_data = all_link_data['link_name'].str.lower().str.decode('utf8')
         
-        # if all_headlines is not None:
-            # all_headlines = pd.concat([all_headlines, all_link_data['link_name']], axis=0)
-        # else:
-            # all_headlines = all_link_data['link_name']
+        if all_headlines is not None:
+            all_headlines = pd.concat([all_headlines, all_link_data], axis=0)
+        else:
+            all_headlines = all_link_data
 
 
     # get named entities with phrasemachine
     print("Generating named entities for all data")
-    
-    all_headlines_phrases = sum((phrasemachine.get_phrases(h)['counts'] for h in all_headlines), \
-            Counter()).most_common(top_nes)
-    vectorizer = CountVectorizer(vocabulary=[k[0] for k in all_headlines_phrases])
-    sd = vectorizer.fit_transform(all_headlines)
-    print(all_headlines, all_headlines_phrases)
-    print(sd)
-    ner = pd.SparseDataFrame(sd, \
-            vectorizer.get_feature_names())
+    phrases = sum((phrasemachine.get_phrases(h)['counts'] for h in all_headlines), \
+			Counter()).most_common(top_nes)
+    vectorizer = CountVectorizer(vocabulary=[k[0] for k in phrases])
+    ner = vectorizer.fit_transform(all_headlines)
+    print([k[0] for k in phrases])
+    print(all_headlines)
+    print(ner, type(ner))
+    print(vectorizer.get_feature_names())
+    ner = pd.DataFrame(data=ner, columns=vectorizer.get_feature_names())
 
     # ngrams
     print("Generating ngrams for all data")
-    
     vectorizer = CountVectorizer(ngram_range=(min_n, max_n), analyzer=analyzer, max_features=top_ngrams)
-    ngrams = pd.SparseDataFrame(vectorizer.fit_transform(all_headlines), \
-            vectorizer.get_feature_names())
+    ngrams = vectorizer.fit_transform(all_headlines)
+    ngrams = pd.DataFrame(data=ngrams, columns=vectorizer.get_feature_names())
 
-    return pd.concat([ner, ngrams], axis=1)    
+    return pd.concat([ner, ngrams], axis=1)
+    
 
 
 def train(X, y):
@@ -156,8 +167,11 @@ if __name__ == "__main__":
     min_n = 1
     max_n = 2
     analyzer = 'word'
-    top_ngrams = 20      # only use top 20000 unigrams and bigrams
-    top_nes = 5       # only use top 1000 named entities
+    top_ngrams = 200      # only use top 20000 unigrams and bigrams
+    top_nes = 10     # only use top 1000 named entities
+
+    # TODO model hyperparams
+    num_datapoints_for_model = 10
     n_trees = 10
     model = RandomForestClassifier(n_estimators=n_trees)
 
