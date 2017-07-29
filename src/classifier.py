@@ -4,6 +4,7 @@ from sklearn.preprocessing import normalize
 from sklearn.metrics import confusion_matrix
 from sklearn.metrics import accuracy_score as sklearn_accuracy_score
 from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.grid_search import GridSearchCV
 from scipy import sparse
 import itertools
 import util
@@ -51,10 +52,11 @@ def concat_features():
     other_features = other_features.fillna(0)
 
     X = pd.concat((all_lexical_feats, other_features), axis=1)
-    print(X)
     # kept track of just how many datapoints for each newsgroup there was
     y = np.repeat(range(1, len(util.newsgroups) + 1), labels)
-    print(y)
+
+    feature_names = X.columns
+    np.savetxt('feature_names.txt', X.columns, fmt='%5s', delimiter=',')    
     np.savetxt('X.csv', X.values, delimiter=',')
     np.savetxt('y.csv', y, delimiter=',')
     status_ids_order.to_csv('status_ids_order.csv')
@@ -118,12 +120,22 @@ def get_vectorizations_for_all_classes():
 def train(X, y):
     X_train, X_test, y_train, y_test = cross_validation.train_test_split(   \
                     X, y, test_size=0.2, random_state=0)
+ 
+    clf = RandomForestClassifier()
+    params_grid = {'max_depth': [30, 40, 60, None], 'n_estimators': [10, 15, 20. 30, 40]}
+    print("Params searched are %s" % params_grid)
+    grid_clf = GridSearchCV(clf, params_grid, cv=10)
+    grid_clf.fit(X_train, y_train)
+    model = grid_clf.best_estimator_
+    print("Best params from grid search are %s" % grid_clf.best_params_)
+    print("Best score from grid search on left-out data was %s" % grid_clf.best_score_)
 
     model.fit(X_train, y_train)
     y_pred = model.predict(X_test)
+    print(model.get_params())
 
-    print("Training error: %.6f" % accuracy_score(model.predict(X_train), y_train))
-    print("Test error: %.6f" % accuracy_score(y_pred, y_test))
+    print("Training error: %.6f" % accuracy_score(model.predict(X_train), y_train, 'Training data confusion matrix'))
+    print("Test error: %.6f" % accuracy_score(y_pred, y_test, 'Test data confusion matrix'))
     
     confusion_matrices_pdf.close()
     print_best_features(model.feature_importances_, X.columns)
@@ -135,21 +147,23 @@ def print_best_features(coef, feature_names):
     zipped = zip(coef, feature_names)				
     zipped.sort(key = lambda t: t[0], reverse=True)
 
-    print("\nMOST POSITIVE FEATURES:")
+    print("\nMOST IMPORTANT FEATURES:")
     for (weight, word) in zipped[:40]:
         print("{}\t{:.6f}".format(word, weight))
 
-    print("\nMOST NEGATIVE FEATURES:")
+    print("\nLEAST IMPORTANT FEATURES:")
     for (weight, word) in zipped[:-40:-1]:
         print("{}\t{:.6f}".format(word, weight))
 
 
-def accuracy_score(y_pred, y_true):
+def accuracy_score(y_pred, y_true, title):
     # plot confusion matrix for classes
     cnf_matrix = confusion_matrix(y_true, y_pred)
+    print(title, cnf_matrix)
+    np.savetxt('../' + title + '.csv', cnf_matrix, delimiter=',')
     np.set_printoptions(precision=2)
     plt.figure()
-    plot_confusion_matrix(cnf_matrix, classes=util.newsgroups)
+    plot_confusion_matrix(cnf_matrix, classes=util.newsgroups, title=title)
     confusion_matrices_pdf.savefig(plt.gcf())
     
     return sklearn_accuracy_score(y_true, y_pred)
@@ -184,13 +198,11 @@ if __name__ == "__main__":
     min_n = 1
     max_n = 2
     analyzer = 'word'
-    top_ngrams = 200      # only use top 20000 unigrams and bigrams
-    top_nes = 100     # only use top 1000 named entities
+    top_ngrams = 20000      # only use top 20000 unigrams and bigrams
+    top_nes = 10000     # only use top 1000 named entities
 
     # TODO model hyperparams
-    num_datapoints_for_model = 100
-    n_trees = 10
-    model = RandomForestClassifier(n_estimators=n_trees)
+    num_datapoints_for_model = 10000
 
     confusion_matrices_pdf = PdfPages(util.home_dir + '/confusion_matrices.pdf')
     seaborn.set_style("darkgrid")
@@ -198,7 +210,11 @@ if __name__ == "__main__":
 
 
     status_ids_order = None
+    feature_names = None
+    X = np.genfromtxt('X.csv', delimiter=',')
+    y = np.genfromtxt('y.csv', delimiter=',')
+    feature_names = np.genfromtxt('feature_names.txt', delimiter=',')
 
-    X, y = concat_features()
+    #X, y = concat_features()
     train(X, y)
 
