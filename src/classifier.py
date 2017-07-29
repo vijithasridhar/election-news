@@ -203,6 +203,7 @@ if __name__ == "__main__":
 
     # TODO model hyperparams
     num_datapoints_for_model = 10000
+    party_prediction = False    # predict e.g. liberal vs conservative instead of Dem vs Rep
 
     confusion_matrices_pdf = PdfPages(util.home_dir + '/confusion_matrices.pdf')
     seaborn.set_style("darkgrid")
@@ -214,6 +215,9 @@ if __name__ == "__main__":
     X = np.genfromtxt('X.csv', delimiter=',')
     y = np.genfromtxt('y.csv', delimiter=',')
     feature_names = np.genfromtxt('feature_names.txt', delimiter=',')
+
+    if party_prediction:
+        y = np.where(y == 1 or y == 3 or y == 4, 0, 1)  #liberal is 0
 
     #X, y = concat_features()
     train(X, y)
