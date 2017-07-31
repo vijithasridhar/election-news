@@ -122,7 +122,7 @@ def train(X, y):
                     X, y, test_size=0.2, random_state=0)
  
     clf = RandomForestClassifier()
-    params_grid = {'max_depth': [30, 40, 60, None], 'n_estimators': [10, 15, 20. 30, 40]}
+    params_grid = {'n_estimators': [40, 60, 80, 100, 120]}
     print("Params searched are %s" % params_grid)
     grid_clf = GridSearchCV(clf, params_grid, cv=10)
     grid_clf.fit(X_train, y_train)
@@ -137,8 +137,7 @@ def train(X, y):
     print("Training error: %.6f" % accuracy_score(model.predict(X_train), y_train, 'Training data confusion matrix'))
     print("Test error: %.6f" % accuracy_score(y_pred, y_test, 'Test data confusion matrix'))
     
-    confusion_matrices_pdf.close()
-    print_best_features(model.feature_importances_, X.columns)
+    print_best_features(model.feature_importances_, feature_names)
 
 
 def print_best_features(coef, feature_names):
@@ -192,6 +191,15 @@ def plot_confusion_matrix(cm, classes, normalize=True, title='Confusion matrix',
     plt.xlabel('Predicted label')
 
 
+def load_sparse(filename, delimiter=','):
+    txt = open(filename, 'r')
+    l1 = []
+    for line in txt:
+        l1.append([sparse.coo_matrix(np.loadtxt([line], delimiter=delimiter))])
+    txt.close()
+    return sparse.bmat(l1)
+
+
 
 if __name__ == "__main__":
     # TODO hyperparameters for ngrams/NER
@@ -203,22 +211,26 @@ if __name__ == "__main__":
 
     # TODO model hyperparams
     num_datapoints_for_model = 10000
-    party_prediction = False    # predict e.g. liberal vs conservative instead of Dem vs Rep
+    party_prediction = True    # predict e.g. liberal vs conservative instead of Dem vs Rep
 
     confusion_matrices_pdf = PdfPages(util.home_dir + '/confusion_matrices.pdf')
     seaborn.set_style("darkgrid")
     seaborn.set_context("paper")
 
-
+    #X, y = concat_features()
     status_ids_order = None
     feature_names = None
-    X = np.genfromtxt('X.csv', delimiter=',')
+    X = load_sparse('X.csv', delimiter=',')
     y = np.genfromtxt('y.csv', delimiter=',')
-    feature_names = np.genfromtxt('feature_names.txt', delimiter=',')
+    with open('feature_names.txt', 'r') as f:
+        feature_names = f.read().splitlines()
+    print("Successfully loaded feature and label files")
 
-    if party_prediction:
-        y = np.where(y == 1 or y == 3 or y == 4, 0, 1)  #liberal is 0
-
-    #X, y = concat_features()
     train(X, y)
+    if party_prediction:
+        y = np.where(((y == 1) | (y == 3) | (y == 4)), 0, 1)  #liberal is 0
+        print("\n\n\nRESULTS FOR PARTY PREDICTION")
+        train(X, y)
+
+    confusion_matrices_pdf.close()
 
