@@ -27,7 +27,7 @@ def sample_by_index(df, index, i, num_one_newsgroup):
 
 
 def concat_features():
-    other_features = get_vectorizations_for_all_classes()
+    vectorized_features = get_vectorizations_for_all_classes()
     print("Combining all features into data and labels")
     all_lexical_feats = None
     labels = []
@@ -35,7 +35,7 @@ def concat_features():
     for i, ng in enumerate(util.newsgroups):
         lexical_feats = pd.read_csv(util.lexical_features_file % ng, sep=',', encoding='utf8') 
         print('File %s shape %s' % (i, lexical_feats.shape))
-        lexical_feats = sample_by_index(lexical_feats, other_features.index, i, \
+        lexical_feats = sample_by_index(lexical_feats, vectorized_features.index, i, \
                 (num_datapoints_for_model // len(util.newsgroups))) 
         labels.append(lexical_feats.shape[0])
 
@@ -44,15 +44,15 @@ def concat_features():
         else:
             all_lexical_feats = lexical_feats
     
-    assert all_lexical_feats.index.equals(other_features.index), "Error: sampling different datapoints " \
+    assert all_lexical_feats.index.equals(vectorized_features.index), "Error: sampling different datapoints " \
             + "from the feature matrices!" 
 
     # delete the first column because they're all the status IDs, but save that
     status_ids_order = all_lexical_feats[util.primary_key]    
     all_lexical_feats.drop(util.primary_key, axis=1, inplace=True)
-    other_features = other_features.fillna(0)
+    vectorized_features = vectorized_features.fillna(0)
 
-    X = pd.concat((all_lexical_feats, other_features), axis=1)
+    X = pd.concat((all_lexical_feats, vectorized_features), axis=1)
     # kept track of just how many datapoints for each newsgroup there was
     y = np.repeat(range(1, len(util.newsgroups) + 1), labels)
 
@@ -124,14 +124,14 @@ def train(X, y):
     X_train, X_test, y_train, y_test = cross_validation.train_test_split(   \
                     X, y, test_size=0.2, random_state=0)
  
-    clf = RandomForestClassifier()
-    params_grid = {'n_estimators': [40, 60, 80, 100, 120]}
-    print("Params searched are %s" % params_grid)
-    grid_clf = GridSearchCV(clf, params_grid, cv=10)
-    grid_clf.fit(X_train, y_train)
-    model = grid_clf.best_estimator_
-    print("Best params from grid search are %s" % grid_clf.best_params_)
-    print("Best score from grid search on left-out data was %s" % grid_clf.best_score_)
+    # clf = RandomForestClassifier()
+    # params_grid = {'n_estimators': [40, 60, 80, 100, 120]}
+    # print("Params searched are %s" % params_grid)
+    # grid_clf = GridSearchCV(clf, params_grid, cv=10)
+    # grid_clf.fit(X_train, y_train)
+    model = RandomForestClassifier(n_estimators=120) #grid_clf.best_estimator_
+    # print("Best params from grid search are %s" % grid_clf.best_params_)
+    # print("Best score from grid search on left-out data was %s" % grid_clf.best_score_)
 
     model.fit(X_train, y_train)
     y_pred = model.predict(X_test)
@@ -165,7 +165,10 @@ def accuracy_score(y_pred, y_true, title):
     np.savetxt(util.home_dir + '/' + title + '.csv', cnf_matrix, delimiter=',')
     np.set_printoptions(precision=2)
     plt.figure()
-    plot_confusion_matrix(cnf_matrix, classes=util.newsgroups, title=title)
+    if np.unique(y_true).size > 2:
+        plot_confusion_matrix(cnf_matrix, classes=util.newsgroups, title=title)
+    else:
+        plot_confusion_matrix(cnf_matrix, classes=['Liberal', 'Conservative'], title=title)
     confusion_matrices_pdf.savefig(plt.gcf())
     
     return sklearn_accuracy_score(y_true, y_pred)
@@ -219,15 +222,17 @@ if __name__ == "__main__":
     confusion_matrices_pdf = PdfPages(util.home_dir + '/confusion_matrices.pdf')
     seaborn.set_style("darkgrid")
     seaborn.set_context("paper")
+    
+    status_ids_order = None
+    feature_names = None
 
-    X, y = concat_features()
-    # status_ids_order = None
-    # feature_names = None
-    # X = sparse.mmread('X.csv')
-    # y = np.genfromtxt('y.csv', delimiter=',')
-    # with open('feature_names.txt', 'r') as f:
-        # feature_names = f.read().splitlines()
-    # print("Successfully loaded feature and label files")
+    # X, y = concat_features()
+    # feature_names = X.columns
+    X = mmread('X.csv.mtx')
+    y = np.genfromtxt('y.csv', delimiter=',')
+    with open('feature_names.txt', 'r') as f:
+        feature_names = f.read().splitlines()
+    print("Successfully loaded feature and label files")
 
     train(X, y)
     if party_prediction:

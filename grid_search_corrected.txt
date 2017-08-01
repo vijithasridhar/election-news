@@ -1,0 +1,193 @@
+Successfully loaded feature and label files
+{'warm_start': False, 'oob_score': False, 'n_jobs': 1, 'verbose': 0, 'max_leaf_nodes': None, 'bootstrap': True, 'min_samples_leaf': 1, 'n_estimators': 120, 'min_samples_split': 2, 'min_weight_fraction_leaf': 0.0, 'criterion': 'gini', 'random_state': None, 'min_impurity_split': 1e-07, 'max_features': 'auto', 'max_depth': None, 'class_weight': None}
+('Training data confusion matrix', array([[1353,    0,    0,    0,    0,    0],
+       [   0, 1337,    0,    0,    0,    0],
+       [   0,    0, 1340,    0,    0,    0],
+       [   0,    0,    0, 1342,    0,    0],
+       [   0,    0,    0,    0, 1303,    0],
+       [   0,    0,    0,    0,    0, 1321]]))
+Training error: 1.000000
+('Test data confusion matrix', array([[215,  20,  10,  43,  12,  13],
+       [ 30, 113,  50,  66,  36,  34],
+       [ 19,  10, 270,   6,   9,  12],
+       [ 68,  43,  48, 130,   7,  28],
+       [ 36,  68,  53,  46, 115,  45],
+       [ 71,  43,  42,  32,  11, 146]]))
+Test error: 0.494500
+
+MOST IMPORTANT FEATURES:
+lexical_density	0.038205
+length_of_line	0.022764
+avg_sentence_length	0.021279
+count_nouns	0.020319
+formality_measure	0.015987
+avg_word_length	0.014650
+flesch_reading_ease	0.014060
+compound_sentiment	0.009355
+count_verbs	0.008764
+negative_sentiment	0.007651
+count_prepositions	0.007200
+count_adjectives	0.006339
+  x80	0.005578
+positive_sentiment	0.005573
+  xe2	0.005188
+xe2 x80	0.004834
+  the	0.004348
+negative_sentiment_words	0.004329
+   to	0.003918
+x80 x99s	0.003601
+   in	0.003561
+ x99s	0.003496
+positive_sentiment_words	0.003188
+count_adverbs	0.003087
+   of	0.002902
+count_pronouns	0.002734
+  for	0.002539
+trump	0.002538
+   on	0.002316
+  and	0.002250
+lexical_richness	0.002231
+breitbart	0.002213
+obama	0.001945
+hillary	0.001821
+   is	0.001740
+after	0.001625
+x80 x99	0.001615
+ with	0.001467
+  x99	0.001458
+  how	0.001456
+
+LEAST IMPORTANT FEATURES:
+yiannopoulos over	0.000000
+ yelp	0.000000
+x9ccoolant xe2	0.000000
+x9ccoolant	0.000000
+x99s market	0.000000
+x99s ex	0.000000
+x99s bid	0.000000
+ x99d	0.000000
+x98no	0.000000
+x98dead broke	0.000000
+x98dead	0.000000
+x93 destroys	0.000000
+x80 xa2	0.000000
+x80 x9ccoolant	0.000000
+x80 x99d	0.000000
+x80 x98no	0.000000
+x80 x98dead	0.000000
+wyoming senate	0.000000
+wrong about	0.000000
+withhold	0.000000
+with wikileaks	0.000000
+with bat	0.000000
+will to	0.000000
+wendy davis	0.000000
+warming myth	0.000000
+want it	0.000000
+waiters	0.000000
+visas to	0.000000
+virginia gov	0.000000
+velvet underground	0.000000
+using their	0.000000
+using our	0.000000
+urging	0.000000
+upsets	0.000000
+unfriend	0.000000
+ukraine xe2	0.000000
+trump now	0.000000
+trump era	0.000000
+trucks	0.000000
+
+
+
+RESULTS FOR PARTY PREDICTION
+{'warm_start': False, 'oob_score': False, 'n_jobs': 1, 'verbose': 0, 'max_leaf_nodes': None, 'bootstrap': True, 'min_samples_leaf': 1, 'n_estimators': 120, 'min_samples_split': 2, 'min_weight_fraction_leaf': 0.0, 'criterion': 'gini', 'random_state': None, 'min_impurity_split': 1e-07, 'max_features': 'auto', 'max_depth': None, 'class_weight': None}
+('Training data confusion matrix', array([[4035,    0],
+       [   0, 3961]]))
+Training error: 1.000000
+('Test data confusion matrix', array([[762, 201],
+       [367, 670]]))
+Test error: 0.716000
+
+MOST IMPORTANT FEATURES:
+length_of_line	0.026641
+lexical_density	0.022818
+avg_sentence_length	0.022409
+count_nouns	0.021924
+formality_measure	0.021693
+avg_word_length	0.016727
+flesch_reading_ease	0.016447
+count_verbs	0.010353
+xe2 x80	0.009025
+  xe2	0.008703
+compound_sentiment	0.008248
+  x80	0.007608
+negative_sentiment	0.006374
+count_prepositions	0.005790
+count_adjectives	0.005761
+positive_sentiment	0.005295
+   to	0.004317
+ x99s	0.004239
+x80 x99s	0.004178
+  x99	0.003783
+  the	0.003389
+negative_sentiment_words	0.003229
+x80 x99	0.003114
+   in	0.003056
+count_adverbs	0.002775
+   of	0.002644
+positive_sentiment_words	0.002565
+  for	0.002358
+hillary	0.002247
+  and	0.002225
+lexical_richness	0.002007
+breitbart	0.001969
+obama	0.001947
+count_pronouns	0.001899
+   on	0.001812
+   is	0.001708
+watch	0.001636
+trump	0.001482
+ what	0.001456
+   at	0.001400
+
+LEAST IMPORTANT FEATURES:
+your name	0.000000
+your illegals	0.000000
+you for	0.000000
+yiannopoulos over	0.000000
+ yelp	0.000000
+year olds	0.000000
+x9d xe2	0.000000
+x9ccoolant xe2	0.000000
+x9ccoolant	0.000000
+x99t know	0.000000
+x99s vision	0.000000
+x99s sells	0.000000
+x99s on	0.000000
+x99s market	0.000000
+x99s latest	0.000000
+x99s ex	0.000000
+x99s bid	0.000000
+x99s administration	0.000000
+ x99d	0.000000
+x99 politicians	0.000000
+x99 author	0.000000
+x98they	0.000000
+x98shameful	0.000000
+x98sesame street	0.000000
+x98saturday	0.000000
+x98no	0.000000
+x98i am	0.000000
+x98dead broke	0.000000
+x98dead	0.000000
+x98brexit	0.000000
+x93 destroys	0.000000
+x8b x86	0.000000
+x80 x9ccoolant	0.000000
+x80 x99d	0.000000
+x80 x98they	0.000000
+x80 x98one	0.000000
+x80 x98no	0.000000
+x80 x98home	0.000000
+x80 x98dead	0.000000
