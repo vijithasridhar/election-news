@@ -17,16 +17,23 @@ from phrasemachine import phrasemachine
 from collections import Counter
 
 
+def sample_by_index(df, index, i, num_one_newsgroup):
+    index = list(index)
+    indices_for_this_ng = index[i * num_one_newsgroup : (i+1) * num_one_newsgroup]
+    return df.ix[indices_for_this_ng]
+
+
 def concat_features():
     other_features = get_vectorizations_for_all_classes()
-
+    print("Ngrams ner feature index is %s" % other_features.index)
     print("Combining all features into data and labels")
     all_lexical_feats = None
     labels = []
 
     for i, ng in enumerate(util.newsgroups):
-        lexical_feats = pd.read_csv(util.lexical_features_file % ng, sep=',', encoding='utf8') \
-                .sample(n=(num_datapoints_for_model // len(util.newsgroups)), random_state=i) 
+        lexical_feats = pd.read_csv(util.lexical_features_file % ng, sep=',', encoding='utf8').set_index(util.primary_key)
+        print("File %s - %s has shape %s" % (i, ng, lexical_feats.shape))
+        lexical_feats = sample_by_index(lexical_feats, other_features.index, i, num_datapoints_for_model // len(util.newsgroups)) 
         labels.append(lexical_feats.shape[0])
 
         if all_lexical_feats is not None:
@@ -35,7 +42,7 @@ def concat_features():
             all_lexical_feats = lexical_feats
     
     assert all_lexical_feats.index.equals(other_features.index), "Error: sampling different datapoints " \
-            + "from the feature matrices!"
+            + "from the feature matrices at index " + str(np.where(all_lexical_feats.index != other_features.index))
 
     # delete the first column because they're all the status IDs, but save that
     status_ids_order = all_lexical_feats[util.primary_key]    
@@ -80,29 +87,31 @@ def get_vectorizations_for_all_classes():
         # sample datapoints from all the headlines, since you have way too many headlines to use in a model
         # check for NA headlines because you dropped a few links that didn't have headline names when computing features
         # lowercase to do NER without worrying about case (CountVectorizer doesn't work otws)
-        all_link_data = pd.read_csv(util.datafile % ng, sep=',', encoding='UTF-8') 
-        all_link_data = all_link_data[all_link_data['link_name'].notnull()] \
-                        .sample(n=(num_datapoints_for_model // len(util.newsgroups)), random_state=i) \
-                        ['link_name'].str.lower()
+        all_link_data = pd.read_csv(util.datafile % ng, sep=',', encoding='UTF-8')
+        all_link_data = all_link_data[all_link_data['link_name'].notnull()] 
+        print("File %s - %s has shape %s upon dropping nulls" % (i, ng, all_link_data.shape))
+        all_link_data = all_link_data.sample(n=(num_datapoints_for_model // len(util.newsgroups)), random_state=i)
+        all_link_data = all_link_data[[util.primary_key, 'link_name']]
+        all_link_data['link_name'] = all_link_data['link_name'].str.lower()
+        all_link_data = all_link_data.set_index(util.primary_key)
         if all_headlines is not None:
             all_headlines = pd.concat([all_headlines, all_link_data], axis=0)
         else:
             all_headlines = all_link_data
 
-
     # get named entities with phrasemachine
     print("Generating named entities for all data")
-    phrases = sum((phrasemachine.get_phrases(h)['counts'] for h in all_headlines), \
+    phrases = sum((phrasemachine.get_phrases(h)['counts'] for h in all_headlines['link_name']), \
                         Counter()).most_common(top_nes)
     phrases = [str(k[0]) for k in phrases]
-    ner = vectorize(phrases, all_headlines)
+    ner = vectorize(phrases, all_headlines['link_name'])
     # needs pandas 0.20.0+
     ner = pd.SparseDataFrame(data=ner, columns=phrases, index=all_headlines.index)
 
     # ngrams
     print("Generating ngrams for all data")
     vectorizer = CountVectorizer(ngram_range=(min_n, max_n), analyzer=analyzer, max_features=top_ngrams)
-    ngrams = vectorizer.fit_transform(all_headlines)
+    ngrams = vectorizer.fit_transform(all_headlines['link_name'])
     ngrams = pd.SparseDataFrame(data=ngrams, columns=vectorizer.get_feature_names(), \
             index=all_headlines.index)
 
@@ -152,7 +161,7 @@ def accuracy_score(y_pred, y_true, title):
     # plot confusion matrix for classes
     cnf_matrix = confusion_matrix(y_true, y_pred)
     print(title, cnf_matrix)
-    np.savetxt('../' + title + '.csv', cnf_matrix, delimiter=',')
+    np.savetxt(util.home_dir + '/' + title + '.csv', cnf_matrix, delimiter=',')
     np.set_printoptions(precision=2)
     plt.figure()
     plot_confusion_matrix(cnf_matrix, classes=util.newsgroups, title=title)
