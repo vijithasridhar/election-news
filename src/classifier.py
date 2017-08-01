@@ -17,14 +17,6 @@ from phrasemachine import phrasemachine
 from collections import Counter
 
 
-# for some reason random_state wasn't working properly when I called sample(),
-# so I chose to use the same index as in get_vectorizations to sample instead
-def sample_by_index(df, index, i, num_one_newsgroup):
-    index = list(index)
-    indices_for_this_ng = index[i * num_one_newsgroup : (i+1) * num_one_newsgroup]
-    return df.ix[indices_for_this_ng]
-
-
 def concat_features():
     other_features = get_vectorizations_for_all_classes()
 
@@ -33,9 +25,8 @@ def concat_features():
     labels = []
 
     for i, ng in enumerate(util.newsgroups):
-        lexical_feats = pd.read_csv(util.lexical_features_file % ng, sep=',', encoding='utf8') 
-        lexical_feats = sample_by_index(lexical_feats, other_features.index, i, \
-                (num_datapoints_for_model // len(util.newsgroups)))
+        lexical_feats = pd.read_csv(util.lexical_features_file % ng, sep=',', encoding='utf8') \
+                .sample(n=(num_datapoints_for_model // len(util.newsgroups)), random_state=i) 
         labels.append(lexical_feats.shape[0])
 
         if all_lexical_feats is not None:
@@ -172,7 +163,6 @@ def accuracy_score(y_pred, y_true, title):
 def plot_confusion_matrix(cm, classes, normalize=True, title='Confusion matrix', cmap=plt.cm.Blues):
     plt.imshow(cm, interpolation='nearest', cmap=cmap)
     plt.title(title)
-    plt.colorbar()
     tick_marks = np.arange(len(classes))
     plt.xticks(tick_marks, classes, rotation=45)
     plt.yticks(tick_marks, classes)
@@ -182,10 +172,11 @@ def plot_confusion_matrix(cm, classes, normalize=True, title='Confusion matrix',
 
     thresh = cm.max() / 2.
     for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
-        plt.text(j, i, cm[i, j],
+        plt.text(j, i, round(cm[i, j], 2),
                  horizontalalignment="center",
                  color="white" if cm[i, j] > thresh else "black")
 
+    plt.colorbar()        
     plt.tight_layout()
     plt.ylabel('True label')
     plt.xlabel('Predicted label')
@@ -218,19 +209,41 @@ if __name__ == "__main__":
     seaborn.set_context("paper")
 
     #X, y = concat_features()
-    status_ids_order = None
-    feature_names = None
-    X = load_sparse('X.csv', delimiter=',')
-    y = np.genfromtxt('y.csv', delimiter=',')
-    with open('feature_names.txt', 'r') as f:
-        feature_names = f.read().splitlines()
-    print("Successfully loaded feature and label files")
+    # status_ids_order = None
+    # feature_names = None
+    # X = load_sparse('X.csv', delimiter=',')
+    # y = np.genfromtxt('y.csv', delimiter=',')
+    # with open('feature_names.txt', 'r') as f:
+        # feature_names = f.read().splitlines()
+    # print("Successfully loaded feature and label files")
 
-    train(X, y)
-    if party_prediction:
-        y = np.where(((y == 1) | (y == 3) | (y == 4)), 0, 1)  #liberal is 0
-        print("\n\n\nRESULTS FOR PARTY PREDICTION")
-        train(X, y)
+    # train(X, y)
+    # if party_prediction:
+        # y = np.where(((y == 1) | (y == 3) | (y == 4)), 0, 1)  #liberal is 0
+        # print("\n\n\nRESULTS FOR PARTY PREDICTION")
+        # train(X, y)
+
+
+    cmat1 = [[213,  14,  12,  48,  17,   9], \
+       [ 35, 120,  49,  63,  30,  32],\
+       [ 19,   9, 269,   9,   8,  12],\
+       [ 70,  38,  63, 121,  11,  21],\
+       [ 39,  79,  52,  36, 109,  48],\
+       [ 76,  38,  43,  34,  11, 143]]
+
+    cmat2 = [[769, 194],[378, 659]]
+
+    np.set_printoptions(precision=2)
+    plt.figure()
+    plot_confusion_matrix(np.asarray(cmat1), classes=util.newsgroups, title='Confusion matrix for predicting news source')
+    confusion_matrices_pdf.savefig(plt.gcf())
+    plt.figure()
+    
+    plot_confusion_matrix(np.asarray(cmat2), classes=['Liberal', 'Conservative'], title='Confusion matrix for predicting political leaning')
+    confusion_matrices_pdf.savefig(plt.gcf())
+
 
     confusion_matrices_pdf.close()
+    
+
 

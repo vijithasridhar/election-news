@@ -50,20 +50,25 @@ def generate_lexical_features():
             
             for i, link_data in all_link_data.iterrows():
                 # link_name is the *headline* of the link            
+                if i % 1000 == 0:
+                    print("...%s links complete" % i)
+                
                 headline = link_data['link_name']
                 
-                if i == 0 or pd.isnull(headline):
+                if i == 0:
                     # iterrows for some reason includes the names line; link sometimes somehow
                     # doesn't have an associated name
                     continue
-                if i % 1000 == 0:
-                    print("...%s links complete" % i)
+                elif pd.isnull(headline):
+                    # TODO is it right to include 0, or just include the average number?
+                    w.writerow([link_data['status_id']] + [0 for f in lexical_feats])
 
-                global pos_headline, pos_counts
-                pos_headline = nltk.pos_tag(nltk.word_tokenize(headline))
-                pos_counts = compute_pos_counts()
+                else:
+                    global pos_headline, pos_counts
+                    pos_headline = nltk.pos_tag(nltk.word_tokenize(headline))
+                    pos_counts = compute_pos_counts()
 
-                w.writerow([link_data['status_id']] + [str(f(headline)) for f in lexical_feats])
+                    w.writerow([link_data['status_id']] + [str(f(headline)) for f in lexical_feats])
     
     # os.kill(s.pid)
     return
