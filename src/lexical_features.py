@@ -113,7 +113,6 @@ def count_repub_party_references(h):
     return sum(1 for w in h if w.lower() in republican_party_names)
 
 
-
 def load_downworthy_dictionary():
     # taken from https://github.com/snipe/downworthy/
     downworthy_dictionary = None
@@ -160,7 +159,7 @@ def num_hyperbolic_words(h):
                    properties={
                        'annotators': 'sentiment',
                        'outputFormat': 'json',
-                       'timeout': 5000,
+                       'timeout': 6000,
                    })
     try:
         for s in res["sentences"]:
@@ -266,7 +265,7 @@ if __name__ == "__main__":
     pos_headline = None
     pos_counts = None
 
-    democratic_party_names = ['libs', 'liberals', 'dems', 'democrats', 'left']
-    republican_party_names = ['reps', 'repubs', 'republicans', 'right']
+    democratic_party_names = ['libs', 'liberals', 'dems', 'dem', 'democrats', 'left', 'democratic', 'democrat']
+    republican_party_names = ['reps', 'repubs', 'rep', 'repub', 'republicans', 'right', 'republican']
 
     generate_lexical_features()
