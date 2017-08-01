@@ -6,6 +6,7 @@ from sklearn.metrics import accuracy_score as sklearn_accuracy_score
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.grid_search import GridSearchCV
 from scipy import sparse
+from scipy.io import mmread, mmwrite
 import itertools
 import util
 import matplotlib.pyplot as plt
@@ -16,7 +17,9 @@ import pandas as pd
 from phrasemachine import phrasemachine
 from collections import Counter
 
-
+# for some reason random_state wasn't working properly when I called sample(),
+# even with the same size dataframes,
+# so I chose to use the same index as in get_vectorizations to sample instead
 def sample_by_index(df, index, i, num_one_newsgroup):
     index = list(index)
     indices_for_this_ng = index[i * num_one_newsgroup : (i+1) * num_one_newsgroup]
@@ -25,15 +28,15 @@ def sample_by_index(df, index, i, num_one_newsgroup):
 
 def concat_features():
     other_features = get_vectorizations_for_all_classes()
-    print("Ngrams ner feature index is %s" % other_features.index)
     print("Combining all features into data and labels")
     all_lexical_feats = None
     labels = []
 
     for i, ng in enumerate(util.newsgroups):
-        lexical_feats = pd.read_csv(util.lexical_features_file % ng, sep=',', encoding='utf8').set_index(util.primary_key)
-        print("File %s - %s has shape %s" % (i, ng, lexical_feats.shape))
-        lexical_feats = sample_by_index(lexical_feats, other_features.index, i, num_datapoints_for_model // len(util.newsgroups)) 
+        lexical_feats = pd.read_csv(util.lexical_features_file % ng, sep=',', encoding='utf8') 
+        print('File %s shape %s' % (i, lexical_feats.shape))
+        lexical_feats = sample_by_index(lexical_feats, other_features.index, i, \
+                (num_datapoints_for_model // len(util.newsgroups))) 
         labels.append(lexical_feats.shape[0])
 
         if all_lexical_feats is not None:
@@ -42,7 +45,7 @@ def concat_features():
             all_lexical_feats = lexical_feats
     
     assert all_lexical_feats.index.equals(other_features.index), "Error: sampling different datapoints " \
-            + "from the feature matrices at index " + str(np.where(all_lexical_feats.index != other_features.index))
+            + "from the feature matrices!" 
 
     # delete the first column because they're all the status IDs, but save that
     status_ids_order = all_lexical_feats[util.primary_key]    
@@ -55,7 +58,7 @@ def concat_features():
 
     feature_names = X.columns
     np.savetxt('feature_names.txt', X.columns, fmt='%5s', delimiter=',')    
-    np.savetxt('X.csv', X.values, delimiter=',')
+    mmwrite('X.csv', sparse.csc_matrix(X.values))
     np.savetxt('y.csv', y, delimiter=',')
     status_ids_order.to_csv('status_ids_order.csv')
     return X, y
@@ -88,12 +91,10 @@ def get_vectorizations_for_all_classes():
         # check for NA headlines because you dropped a few links that didn't have headline names when computing features
         # lowercase to do NER without worrying about case (CountVectorizer doesn't work otws)
         all_link_data = pd.read_csv(util.datafile % ng, sep=',', encoding='UTF-8')
-        all_link_data = all_link_data[all_link_data['link_name'].notnull()] 
-        print("File %s - %s has shape %s upon dropping nulls" % (i, ng, all_link_data.shape))
-        all_link_data = all_link_data.sample(n=(num_datapoints_for_model // len(util.newsgroups)), random_state=i)
-        all_link_data = all_link_data[[util.primary_key, 'link_name']]
-        all_link_data['link_name'] = all_link_data['link_name'].str.lower()
-        all_link_data = all_link_data.set_index(util.primary_key)
+        all_link_data = all_link_data[all_link_data['link_name'].notnull()]
+        print('File %s shape %s' % (i, all_link_data.shape))
+        all_link_data = all_link_data.sample(n=(num_datapoints_for_model // len(util.newsgroups)), \
+                random_state=i)['link_name'].str.lower()
         if all_headlines is not None:
             all_headlines = pd.concat([all_headlines, all_link_data], axis=0)
         else:
@@ -101,17 +102,17 @@ def get_vectorizations_for_all_classes():
 
     # get named entities with phrasemachine
     print("Generating named entities for all data")
-    phrases = sum((phrasemachine.get_phrases(h)['counts'] for h in all_headlines['link_name']), \
+    phrases = sum((phrasemachine.get_phrases(h)['counts'] for h in all_headlines), \
                         Counter()).most_common(top_nes)
     phrases = [str(k[0]) for k in phrases]
-    ner = vectorize(phrases, all_headlines['link_name'])
+    ner = vectorize(phrases, all_headlines)
     # needs pandas 0.20.0+
     ner = pd.SparseDataFrame(data=ner, columns=phrases, index=all_headlines.index)
 
     # ngrams
     print("Generating ngrams for all data")
     vectorizer = CountVectorizer(ngram_range=(min_n, max_n), analyzer=analyzer, max_features=top_ngrams)
-    ngrams = vectorizer.fit_transform(all_headlines['link_name'])
+    ngrams = vectorizer.fit_transform(all_headlines)
     ngrams = pd.SparseDataFrame(data=ngrams, columns=vectorizer.get_feature_names(), \
             index=all_headlines.index)
 
@@ -222,7 +223,7 @@ if __name__ == "__main__":
     X, y = concat_features()
     # status_ids_order = None
     # feature_names = None
-    # X = load_sparse('X.csv', delimiter=',')
+    # X = sparse.mmread('X.csv')
     # y = np.genfromtxt('y.csv', delimiter=',')
     # with open('feature_names.txt', 'r') as f:
         # feature_names = f.read().splitlines()
