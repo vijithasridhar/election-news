@@ -208,7 +208,7 @@ if __name__ == "__main__":
     seaborn.set_style("darkgrid")
     seaborn.set_context("paper")
 
-    #X, y = concat_features()
+    X, y = concat_features()
     # status_ids_order = None
     # feature_names = None
     # X = load_sparse('X.csv', delimiter=',')
@@ -217,31 +217,11 @@ if __name__ == "__main__":
         # feature_names = f.read().splitlines()
     # print("Successfully loaded feature and label files")
 
-    # train(X, y)
-    # if party_prediction:
-        # y = np.where(((y == 1) | (y == 3) | (y == 4)), 0, 1)  #liberal is 0
-        # print("\n\n\nRESULTS FOR PARTY PREDICTION")
-        # train(X, y)
-
-
-    cmat1 = [[213,  14,  12,  48,  17,   9], \
-       [ 35, 120,  49,  63,  30,  32],\
-       [ 19,   9, 269,   9,   8,  12],\
-       [ 70,  38,  63, 121,  11,  21],\
-       [ 39,  79,  52,  36, 109,  48],\
-       [ 76,  38,  43,  34,  11, 143]]
-
-    cmat2 = [[769, 194],[378, 659]]
-
-    np.set_printoptions(precision=2)
-    plt.figure()
-    plot_confusion_matrix(np.asarray(cmat1), classes=util.newsgroups, title='Confusion matrix for predicting news source')
-    confusion_matrices_pdf.savefig(plt.gcf())
-    plt.figure()
-    
-    plot_confusion_matrix(np.asarray(cmat2), classes=['Liberal', 'Conservative'], title='Confusion matrix for predicting political leaning')
-    confusion_matrices_pdf.savefig(plt.gcf())
-
+    train(X, y)
+    if party_prediction:
+        y = np.where(((y == 1) | (y == 3) | (y == 4)), 0, 1)  #liberal is 0
+        print("\n\n\nRESULTS FOR PARTY PREDICTION")
+        train(X, y)
 
     confusion_matrices_pdf.close()
     
