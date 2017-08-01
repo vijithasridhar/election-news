@@ -78,8 +78,10 @@ def get_vectorizations_for_all_classes():
     for i, ng in enumerate(util.newsgroups):
 
         # sample datapoints from all the headlines, since you have way too many headlines to use in a model
+        # check for NA headlines because you dropped a few links that didn't have headline names when computing features
         # lowercase to do NER without worrying about case (CountVectorizer doesn't work otws)
-        all_link_data = pd.read_csv(util.datafile % ng, sep=',', encoding='UTF-8') \
+        all_link_data = pd.read_csv(util.datafile % ng, sep=',', encoding='UTF-8') 
+        all_link_data = all_link_data[all_link_data['link_name'].notnull()] \
                         .sample(n=(num_datapoints_for_model // len(util.newsgroups)), random_state=i) \
                         ['link_name'].str.lower()
         if all_headlines is not None:
