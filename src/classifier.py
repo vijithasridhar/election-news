@@ -17,14 +17,6 @@ import pandas as pd
 from phrasemachine import phrasemachine
 from collections import Counter
 
-# for some reason random_state wasn't working properly when I called sample(),
-# even with the same size dataframes,
-# so I chose to use the same index as in get_vectorizations to sample instead
-def sample_by_index(df, index, i, num_one_newsgroup):
-    index = list(index)
-    indices_for_this_ng = index[i * num_one_newsgroup : (i+1) * num_one_newsgroup]
-    return df.ix[indices_for_this_ng]
-
 
 def concat_features():
     vectorized_features = get_vectorizations_for_all_classes()
@@ -34,14 +26,8 @@ def concat_features():
 
     num_one_newsgroup = (num_datapoints_for_model // len(util.newsgroups))
     for i, ng in enumerate(util.newsgroups):
-        lexical_feats = pd.read_csv(util.lexical_features_file % ng, sep=',', encoding='utf8') 
-        print('File %s shape %s' % (i, lexical_feats.shape))
-        lexical_feats = lexical_feats.sample(n=(num_datapoints_for_model // len(util.newsgroups)), random_state=i)
-        print('Lexical_feats %s sampled shape %s' % (i, lexical_feats.shape))
-        print('Current lexical_feats.index == vectorized_feats[i].index? %s' % \
-                lexical_feats.index.equals(vectorized_features.index[i * num_one_newsgroup : (i+1) * num_one_newsgroup]))
-        #lexical_feats = sample_by_index(lexical_feats, vectorized_features.index, i, \
-         #       (num_datapoints_for_model // len(util.newsgroups))) 
+        lexical_feats = pd.read_csv(util.lexical_features_file % ng, sep=',', encoding='utf8') \
+			.sample(n=(num_datapoints_for_model // len(util.newsgroups)), random_state=i)
         labels.append(lexical_feats.shape[0])
 
         if all_lexical_feats is not None:
@@ -96,11 +82,9 @@ def get_vectorizations_for_all_classes():
         # check for NA headlines because you dropped a few links that didn't have headline names when computing features
         # lowercase to do NER without worrying about case (CountVectorizer doesn't work otws)
         all_link_data = pd.read_csv(util.datafile % ng, sep=',', encoding='UTF-8')
-        all_link_data = all_link_data[all_link_data['link_name'].notnull()]
-        print('File %s shape %s' % (i, all_link_data.shape))
-        all_link_data = all_link_data.sample(n=(num_datapoints_for_model // len(util.newsgroups)), \
+        all_link_data = all_link_data[all_link_data['link_name'].notnull()].reset_index() \
+		.sample(n=(num_datapoints_for_model // len(util.newsgroups)), \
                 random_state=i)['link_name'].str.lower()
-        print('All_link_data %s sampled and distilled shape %s' % (i, all_link_data.shape))        
         if all_headlines is not None:
             all_headlines = pd.concat([all_headlines, all_link_data], axis=0)
         else:
@@ -126,7 +110,7 @@ def get_vectorizations_for_all_classes():
     
 
 
-def train(X, y):
+def train(X, y, title):
     X_train, X_test, y_train, y_test = cross_validation.train_test_split(   \
                     X, y, test_size=0.2, random_state=0)
  
@@ -143,8 +127,8 @@ def train(X, y):
     y_pred = model.predict(X_test)
     print(model.get_params())
 
-    print("Training error: %.6f" % accuracy_score(model.predict(X_train), y_train, 'Training data confusion matrix'))
-    print("Test error: %.6f" % accuracy_score(y_pred, y_test, 'Test data confusion matrix'))
+    print("Training error: %.6f" % accuracy_score(model.predict(X_train), y_train, 'Training data confusion matrix for ' + title))
+    print("Test error: %.6f" % accuracy_score(y_pred, y_test, 'Confusion matrix for ' + title))
     
     print_best_features(model.feature_importances_, feature_names)
 
@@ -232,19 +216,19 @@ if __name__ == "__main__":
     status_ids_order = None
     feature_names = None
 
-    # X, y = concat_features()
-    # feature_names = X.columns
-    X = mmread('X.csv.mtx')
-    y = np.genfromtxt('y.csv', delimiter=',')
-    with open('feature_names.txt', 'r') as f:
-        feature_names = f.read().splitlines()
-    print("Successfully loaded feature and label files")
+    X, y = concat_features()
+    feature_names = X.columns
+    #X = mmread('X.csv.mtx')
+    #y = np.genfromtxt('y.csv', delimiter=',')
+    #with open('feature_names.txt', 'r') as f:
+       # feature_names = f.read().splitlines()
+    # print("Successfully loaded feature and label files")
 
-    train(X, y)
+    train(X, y, title='predicting the news source by headline')
     if party_prediction:
         y = np.where(((y == 1) | (y == 3) | (y == 4)), 0, 1)  #liberal is 0
         print("\n\n\nRESULTS FOR PARTY PREDICTION")
-        train(X, y)
+        train(X, y, title='predicting the political leaning by headline')
 
     confusion_matrices_pdf.close()
     
