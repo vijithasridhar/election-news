@@ -32,11 +32,16 @@ def concat_features():
     all_lexical_feats = None
     labels = []
 
+    num_one_newsgroup = (num_datapoints_for_model // len(util.newsgroups))
     for i, ng in enumerate(util.newsgroups):
         lexical_feats = pd.read_csv(util.lexical_features_file % ng, sep=',', encoding='utf8') 
         print('File %s shape %s' % (i, lexical_feats.shape))
-        lexical_feats = sample_by_index(lexical_feats, vectorized_features.index, i, \
-                (num_datapoints_for_model // len(util.newsgroups))) 
+        lexical_feats = lexical_feats.sample(n=(num_datapoints_for_model // len(util.newsgroups)), random_state=i)
+        print('Lexical_feats %s sampled shape %s' % (i, lexical_feats.shape))
+        print('Current lexical_feats.index == vectorized_feats[i].index? %s' % \
+                lexical_feats.index.equals(vectorized_features.index[i * num_one_newsgroup : (i+1) * num_one_newsgroup]))
+        #lexical_feats = sample_by_index(lexical_feats, vectorized_features.index, i, \
+         #       (num_datapoints_for_model // len(util.newsgroups))) 
         labels.append(lexical_feats.shape[0])
 
         if all_lexical_feats is not None:
@@ -95,6 +100,7 @@ def get_vectorizations_for_all_classes():
         print('File %s shape %s' % (i, all_link_data.shape))
         all_link_data = all_link_data.sample(n=(num_datapoints_for_model // len(util.newsgroups)), \
                 random_state=i)['link_name'].str.lower()
+        print('All_link_data %s sampled and distilled shape %s' % (i, all_link_data.shape))        
         if all_headlines is not None:
             all_headlines = pd.concat([all_headlines, all_link_data], axis=0)
         else:
