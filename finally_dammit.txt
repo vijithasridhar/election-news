@@ -1,0 +1,201 @@
+Generating named entities for all data
+Generating ngrams for all data
+Combining all features into data and labels
+Params searched are {'n_estimators': [100, 125, 150, 175, 200]}
+Best params from grid search are {'n_estimators': 200}
+Best score from grid search on left-out data was 0.518884442221
+{'warm_start': False, 'oob_score': False, 'n_jobs': 1, 'verbose': 0, 'max_leaf_nodes': None, 'bootstrap': True, 'min_samples_leaf': 1, 'n_estimators': 200, 'min_samples_split': 2, 'min_weight_fraction_leaf': 0.0, 'criterion': 'gini', 'random_state': None, 'min_impurity_split': 1e-07, 'max_features': 'auto', 'max_depth': None, 'class_weight': None}
+('Training data confusion matrix for predicting the news source by headline', array([[1353,    0,    0,    0,    0,    0],
+       [   0, 1337,    0,    0,    0,    0],
+       [   0,    0, 1340,    0,    0,    0],
+       [   0,    0,    0, 1342,    0,    0],
+       [   0,    0,    0,    0, 1303,    0],
+       [   0,    0,    0,    0,    0, 1321]]))
+Training error: 1.000000
+('Confusion matrix for predicting the news source by headline', array([[226,  23,  10,  33,  10,  11],
+       [ 38, 131,  44,  55,  30,  31],
+       [ 10,  13, 276,   7,   8,  12],
+       [ 87,  60,  42, 103,   8,  24],
+       [ 37,  77,  50,  31, 126,  42],
+       [ 71,  42,  38,  37,  11, 146]]))
+Test error: 0.504000
+
+MOST IMPORTANT FEATURES:
+lexical_density	0.038049
+length_of_line	0.022501
+avg_sentence_length	0.020781
+count_nouns	0.019931
+formality_measure	0.016307
+avg_word_length	0.015043
+flesch_reading_ease	0.014471
+compound_sentiment	0.009502
+count_verbs	0.008699
+negative_sentiment	0.007331
+count_prepositions	0.006746
+count_adjectives	0.006573
+positive_sentiment	0.005640
+xe2	0.005613
+xe2 x80	0.005524
+x80	0.005250
+the	0.004391
+negative_sentiment_words	0.004163
+to	0.003821
+x80 x99s	0.003724
+positive_sentiment_words	0.003371
+in	0.003341
+x99s	0.003228
+count_adverbs	0.002952
+of	0.002851
+count_pronouns	0.002626
+trump	0.002563
+for	0.002543
+breitbart	0.002393
+lexical_richness	0.002389
+and	0.002325
+on	0.002064
+obama	0.001840
+is	0.001615
+hillary	0.001568
+after	0.001546
+how	0.001524
+with	0.001469
+x99	0.001435
+china	0.001431
+
+LEAST IMPORTANT FEATURES:
+yiannopoulos over	0.000000
+yelp	0.000000
+x9ccoolant xe2	0.000000
+x9ccoolant	0.000000
+x99s market	0.000000
+x99s ex	0.000000
+x99s bid	0.000000
+x99d	0.000000
+x98no	0.000000
+x98dead broke	0.000000
+x98dead	0.000000
+x93 destroys	0.000000
+x80 x9ccoolant	0.000000
+x80 x99d	0.000000
+x80 x98no	0.000000
+x80 x98dead	0.000000
+wyoming senate	0.000000
+wrong about	0.000000
+with bat	0.000000
+will to	0.000000
+warming myth	0.000000
+waiters	0.000000
+using their	0.000000
+urging	0.000000
+upsets	0.000000
+unfriend	0.000000
+ukraine xe2	0.000000
+trump now	0.000000
+trump era	0.000000
+trucks	0.000000
+toting	0.000000
+to withdraw	0.000000
+to rule	0.000000
+to punish	0.000000
+to perform	0.000000
+to issue	0.000000
+to call	0.000000
+to asia	0.000000
+to 15	0.000000
+
+
+
+RESULTS FOR PARTY PREDICTION
+Params searched are {'n_estimators': [100, 125, 150, 175, 200]}
+Best params from grid search are {'n_estimators': 125}
+Best score from grid search on left-out data was 0.725987993997
+{'warm_start': False, 'oob_score': False, 'n_jobs': 1, 'verbose': 0, 'max_leaf_nodes': None, 'bootstrap': True, 'min_samples_leaf': 1, 'n_estimators': 125, 'min_samples_split': 2, 'min_weight_fraction_leaf': 0.0, 'criterion': 'gini', 'random_state': None, 'min_impurity_split': 1e-07, 'max_features': 'auto', 'max_depth': None, 'class_weight': None}
+('Training data confusion matrix for predicting the political leaning by headline', array([[4035,    0],
+       [   0, 3961]]))
+Training error: 1.000000
+('Confusion matrix for predicting the political leaning by headline', array([[761, 202],
+       [351, 686]]))
+Test error: 0.723500
+
+MOST IMPORTANT FEATURES:
+length_of_line	0.028470
+avg_sentence_length	0.025204
+lexical_density	0.022691
+count_nouns	0.020639
+formality_measure	0.020491
+avg_word_length	0.016059
+flesch_reading_ease	0.014155
+count_verbs	0.011232
+x80	0.009883
+xe2	0.008361
+compound_sentiment	0.008214
+xe2 x80	0.007145
+negative_sentiment	0.006182
+count_adjectives	0.005817
+positive_sentiment	0.005243
+x80 x99s	0.005093
+count_prepositions	0.004984
+x99s	0.003564
+to	0.003242
+negative_sentiment_words	0.003134
+x80 x99	0.003064
+the	0.002977
+count_adverbs	0.002884
+x99	0.002859
+positive_sentiment_words	0.002557
+in	0.002453
+of	0.002285
+breitbart	0.002226
+and	0.002185
+hillary	0.002166
+count_pronouns	0.002145
+lexical_richness	0.002096
+obama	0.001925
+for	0.001909
+on	0.001749
+trump	0.001523
+watch	0.001511
+is	0.001347
+what	0.001345
+count_superlatives	0.001193
+
+LEAST IMPORTANT FEATURES:
+you for	0.000000
+york values	0.000000
+yiannopoulos over	0.000000
+yelp	0.000000
+xbox one	0.000000
+xbox	0.000000
+xa2 the_donald	0.000000
+xa2	0.000000
+x9ci xe2	0.000000
+x9ccoolant xe2	0.000000
+x9ccoolant	0.000000
+x99s vision	0.000000
+x99s time	0.000000
+x99s market	0.000000
+x99s going	0.000000
+x99s family	0.000000
+x99s ex	0.000000
+x99s bid	0.000000
+x99d	0.000000
+x99 politicians	0.000000
+x99 comes	0.000000
+x99 chief	0.000000
+x99 because	0.000000
+x98shameful	0.000000
+x98saturday	0.000000
+x98no	0.000000
+x98dead broke	0.000000
+x98dead	0.000000
+x98brexit xe2	0.000000
+x93 destroys	0.000000
+x80 x9ccoolant	0.000000
+x80 x99d	0.000000
+x80 x98one	0.000000
+x80 x98no	0.000000
+x80 x98dead	0.000000
+x80 x98brexit	0.000000
+wyoming senate	0.000000
+wrong about	0.000000
+workers xe2	0.000000

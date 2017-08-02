@@ -114,14 +114,14 @@ def train(X, y, title):
     X_train, X_test, y_train, y_test = cross_validation.train_test_split(   \
                     X, y, test_size=0.2, random_state=0)
  
-    # clf = RandomForestClassifier()
-    # params_grid = {'n_estimators': [40, 60, 80, 100, 120]}
-    # print("Params searched are %s" % params_grid)
-    # grid_clf = GridSearchCV(clf, params_grid, cv=10)
-    # grid_clf.fit(X_train, y_train)
-    model = RandomForestClassifier(n_estimators=120) #grid_clf.best_estimator_
-    # print("Best params from grid search are %s" % grid_clf.best_params_)
-    # print("Best score from grid search on left-out data was %s" % grid_clf.best_score_)
+    clf = RandomForestClassifier()
+    params_grid = {'n_estimators': [100, 125, 150, 175, 200]}
+    print("Params searched are %s" % params_grid)
+    grid_clf = GridSearchCV(clf, params_grid, cv=10)
+    grid_clf.fit(X_train, y_train)
+    model = grid_clf.best_estimator_
+    print("Best params from grid search are %s" % grid_clf.best_params_)
+    print("Best score from grid search on left-out data was %s" % grid_clf.best_score_)
 
     model.fit(X_train, y_train)
     y_pred = model.predict(X_test)
