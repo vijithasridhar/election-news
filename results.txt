@@ -21,15 +21,15 @@ Training error: 1.000000
 Test error: 0.504000
 
 MOST IMPORTANT FEATURES:
-lexical_density	0.038049
-length_of_line	0.022501
+lexical_density		0.038049
+length_of_line		0.022501
 avg_sentence_length	0.020781
-count_nouns	0.019931
+count_nouns		0.019931
 formality_measure	0.016307
-avg_word_length	0.015043
+avg_word_length		0.015043
 flesch_reading_ease	0.014471
 compound_sentiment	0.009502
-count_verbs	0.008699
+count_verbs		0.008699
 negative_sentiment	0.007331
 count_prepositions	0.006746
 count_adjectives	0.006573
@@ -118,16 +118,16 @@ Training error: 1.000000
 Test error: 0.723500
 
 MOST IMPORTANT FEATURES:
-length_of_line	0.028470
+length_of_line		0.028470
 avg_sentence_length	0.025204
-lexical_density	0.022691
-count_nouns	0.020639
+lexical_density		0.022691
+count_nouns		0.020639
 formality_measure	0.020491
-avg_word_length	0.016059
+avg_word_length		0.016059
 flesch_reading_ease	0.014155
-count_verbs	0.011232
-x80	0.009883
-xe2	0.008361
+count_verbs		0.011232
+x80			0.009883
+xe2			0.008361
 compound_sentiment	0.008214
 xe2 x80	0.007145
 negative_sentiment	0.006182

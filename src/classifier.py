@@ -166,14 +166,15 @@ def accuracy_score(y_pred, y_true, title):
 
 # taken from sklearn documentation
 def plot_confusion_matrix(cm, classes, normalize=True, title='Confusion matrix', cmap=plt.cm.Blues):
+    
+    if normalize:
+        cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
+
     plt.imshow(cm, interpolation='nearest', cmap=cmap)
     plt.title(title)
     tick_marks = np.arange(len(classes))
     plt.xticks(tick_marks, classes, rotation=45)
     plt.yticks(tick_marks, classes)
-
-    if normalize:
-        cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
 
     thresh = cm.max() / 2.
     for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
@@ -195,6 +196,12 @@ def load_sparse(filename, delimiter=','):
     txt.close()
     return sparse.bmat(l1)
 
+def plot_given_confusion_matrix(cnf_matrix, classes, title):
+    np.set_printoptions(precision=2)
+    plt.figure()
+    plot_confusion_matrix(np.asarray(cnf_matrix), classes=classes, title=title)
+    confusion_matrices_pdf.savefig(plt.gcf())
+    plt.show()
 
 
 if __name__ == "__main__":
@@ -216,19 +223,28 @@ if __name__ == "__main__":
     status_ids_order = None
     feature_names = None
 
-    X, y = concat_features()
-    feature_names = X.columns
-    #X = mmread('X.csv.mtx')
-    #y = np.genfromtxt('y.csv', delimiter=',')
-    #with open('feature_names.txt', 'r') as f:
+    # X, y = concat_features()
+    # feature_names = X.columns
+    # X = mmread('X.csv.mtx')
+    # y = np.genfromtxt('y.csv', delimiter=',')
+    # with open('feature_names.txt', 'r') as f:
        # feature_names = f.read().splitlines()
     # print("Successfully loaded feature and label files")
 
-    train(X, y, title='predicting the news source by headline')
-    if party_prediction:
-        y = np.where(((y == 1) | (y == 3) | (y == 4)), 0, 1)  #liberal is 0
-        print("\n\n\nRESULTS FOR PARTY PREDICTION")
-        train(X, y, title='predicting the political leaning by headline')
+    # train(X, y, title='predicting news source by headline')
+    # if party_prediction:
+        # y = np.where(((y == 1) | (y == 3) | (y == 4)), 0, 1)  #liberal is 0
+        # print("\n\n\nRESULTS FOR PARTY PREDICTION")
+        # train(X, y, title='predicting political leaning by headline')
+
+    cnf_matrix = [[226,  23,  10,  33,  10,  11], [ 38, 131,  44,  55,  30,  31], \
+       [ 10,  13, 276,   7,   8,  12],[ 87,  60,  42, 103,   8,  24], \
+       [ 37,  77,  50,  31, 126,  42],[ 71,  42,  38,  37,  11, 146]]
+    plot_given_confusion_matrix(cnf_matrix, classes=util.newsgroups, title='Confusion matrix for predicting news source by headline')
+    
+    cnf_matrix = [[761, 202], [351, 686]]
+    plot_given_confusion_matrix(cnf_matrix, classes=['Liberal', 'Conservative'], title='Confusion matrix for predicting political leaning by headline')
+   
 
     confusion_matrices_pdf.close()
     
