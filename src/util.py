@@ -10,10 +10,13 @@ datafile = home_dir + '/data/%s_facebook_statuses.csv'
 lexical_features_file = home_dir + '/features/%s_lexical_features.csv'
 
 
-# Facebook scraping stuff
-app_id = "1927818557507925"
-app_secret = "RKwQV48s-YvW4HEhYbDkgx7Rng4" # TODO remove before posting online DO NOT SHARE WITH ANYONE!
-
+# Facebook scraping stuff; hide the app_id and app_secret in private file
+app_id = ''
+app_secret = ''
+try:
+    from .private import *
+except Exception:
+    pass
 access_token = app_id + "|" + app_secret
 
 
