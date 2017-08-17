@@ -239,13 +239,13 @@ if __name__ == "__main__":
 
     # did LinearSVC since the data will work with a one vs rest model, 
     # since the data is selected to be a balanced amt between all classes
-    models_and_params = [('RF', RandomForestClassifier(), {'n_estimators': [100, 125, 150, 175, 200]}), 
-            ('NB', NaiveBayes(), None),
-            ('SVM', SVC(), {'random_state' : [0]}), 
-            ('LinearSVC', LinearSVC(), {'random_state' : [0]}] 
+    models_and_params = [('RF', RandomForestClassifier(n_estimators=100)), 
+            ('NB', NaiveBayes()),
+            ('SVM', SVC(random_state=0)), 
+            ('LinearSVC', LinearSVC(random_state=0))] 
 
-    for model_name, model, params_grid in models_and_params:
-        train(X, y, title='predicting news source by headline - %s' % model_name, model, params_grid)
+    for model_name, model in models_and_params:
+        train(X, y, title='predicting news source by headline - %s' % model_name, model, None)
         
     if party_prediction:
         print("\n\n\nRESULTS FOR PARTY PREDICTION")
