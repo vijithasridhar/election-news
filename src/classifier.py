@@ -1,8 +1,10 @@
 from sklearn import cross_validation
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.svm import SVC
+from sklearn.naive_bayes import GaussianNB
 from sklearn.preprocessing import normalize
 from sklearn.metrics import confusion_matrix
-from sklearn.metrics import accuracy_score as sklearn_accuracy_score
+from sklearn.metrics import f1_score as sklearn_accuracy_score
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.grid_search import GridSearchCV
 from scipy import sparse
@@ -110,18 +112,18 @@ def get_vectorizations_for_all_classes():
     
 
 
-def train(X, y, title):
+def train(X, y, title, clf, params_grid):
     X_train, X_test, y_train, y_test = cross_validation.train_test_split(   \
                     X, y, test_size=0.2, random_state=0)
- 
-    clf = RandomForestClassifier()
-    params_grid = {'n_estimators': [100, 125, 150, 175, 200]}
-    print("Params searched are %s" % params_grid)
-    grid_clf = GridSearchCV(clf, params_grid, cv=10)
-    grid_clf.fit(X_train, y_train)
-    model = grid_clf.best_estimator_
-    print("Best params from grid search are %s" % grid_clf.best_params_)
-    print("Best score from grid search on left-out data was %s" % grid_clf.best_score_)
+    if params_grid:
+        print("Params searched are %s" % params_grid)
+        grid_clf = GridSearchCV(clf, params_grid, cv=10)
+        grid_clf.fit(X_train, y_train)
+        model = grid_clf.best_estimator_
+        print("Best params from grid search are %s" % grid_clf.best_params_)
+        print("Best score from grid search on left-out data was %s" % grid_clf.best_score_)
+    else:
+        model = clf
 
     model.fit(X_train, y_train)
     y_pred = model.predict(X_test)
@@ -130,7 +132,11 @@ def train(X, y, title):
     print("Training error: %.6f" % accuracy_score(model.predict(X_train), y_train, 'Training data confusion matrix for ' + title))
     print("Test error: %.6f" % accuracy_score(y_pred, y_test, 'Confusion matrix for ' + title))
     
-    print_best_features(model.feature_importances_, feature_names)
+    if hasattr(model, feature_importances_):
+        print_best_features(model.feature_importances_, feature_names)
+    elif hasattr(model, coef_):
+        print_best_features(model.coef_, feature_names)
+
 
 
 def print_best_features(coef, feature_names):
@@ -225,28 +231,32 @@ if __name__ == "__main__":
 
     # X, y = concat_features()
     # feature_names = X.columns
-    # X = mmread('X.csv.mtx')
-    # y = np.genfromtxt('y.csv', delimiter=',')
-    # with open('feature_names.txt', 'r') as f:
-       # feature_names = f.read().splitlines()
-    # print("Successfully loaded feature and label files")
+    X = mmread('X.csv.mtx')
+    y = np.genfromtxt('y.csv', delimiter=',')
+    with open('feature_names.txt', 'r') as f:
+       feature_names = f.read().splitlines()
+    print("Successfully loaded feature and label files")
 
-    # train(X, y, title='predicting news source by headline')
-    # if party_prediction:
-        # y = np.where(((y == 1) | (y == 3) | (y == 4)), 0, 1)  #liberal is 0
-        # print("\n\n\nRESULTS FOR PARTY PREDICTION")
-        # train(X, y, title='predicting political leaning by headline')
+    # did LinearSVC since the data will work with a one vs rest model, 
+    # since the data is selected to be a balanced amt between all classes
+    models_and_params = [('RF', RandomForestClassifier(), {'n_estimators': [100, 125, 150, 175, 200]}), 
+            ('NB', NaiveBayes(), None),
+            ('SVM', SVC(), {'random_state' : [0]}), 
+            ('LinearSVC', LinearSVC(), {'random_state' : [0]}] 
 
-    cnf_matrix = [[226,  23,  10,  33,  10,  11], [ 38, 131,  44,  55,  30,  31], \
-       [ 10,  13, 276,   7,   8,  12],[ 87,  60,  42, 103,   8,  24], \
-       [ 37,  77,  50,  31, 126,  42],[ 71,  42,  38,  37,  11, 146]]
-    plot_given_confusion_matrix(cnf_matrix, classes=util.newsgroups, title='Confusion matrix for predicting news source by headline')
-    
-    cnf_matrix = [[761, 202], [351, 686]]
-    plot_given_confusion_matrix(cnf_matrix, classes=['Liberal', 'Conservative'], title='Confusion matrix for predicting political leaning by headline')
-   
+    for model_name, model, params_grid in models_and_params:
+        train(X, y, title='predicting news source by headline - %s' % model_name, model, params_grid)
+        
+    if party_prediction:
+        print("\n\n\nRESULTS FOR PARTY PREDICTION")
+        y = np.where(((y == 1) | (y == 3) | (y == 4)), 0, 1)  #liberal is 0
+
+        for model_name, model, params_grid in models_and_params:
+            train(X, y, title='predicting political leaning by headline - %s' % model_name, model, \
+                    params_grid)   
 
     confusion_matrices_pdf.close()
+
     
 
 
