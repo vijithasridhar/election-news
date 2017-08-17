@@ -55,13 +55,10 @@ def generate_lexical_features():
                 
                 headline = link_data['link_name']
                 
-                if i == 0:
+                if i == 0 or pd.isnull(headline):
                     # iterrows for some reason includes the names line; link sometimes somehow
                     # doesn't have an associated name
                     continue
-                elif pd.isnull(headline):
-                    # TODO is it right to include 0, or just include the average number?
-                    w.writerow([link_data['status_id']] + [0 for f in lexical_feats])
 
                 else:
                     global pos_headline, pos_counts
